@@ -1,3 +1,6 @@
+import datetime
+from datetime import date
+import time
 import requests
 import json
 import pandas as pd
@@ -12,6 +15,9 @@ if API_KEY == "OOPS, Please set env var called 'ALPHAVANTAGE_API_KEY'":
     print(API_KEY)
     print("Exiting program...")
     quit()
+
+def to_usd(my_price):
+    return f"${my_price:,.2f}" # Credit to the man, the myth, the legend, Michael Rossetti
 
 print("-------------------------")
 print("Welcome to Robo-Advisor! Analyze your stocks instantly and easily here!")
@@ -32,31 +38,71 @@ while(str.casefold(ticker) != str.casefold("Done")):
         if str.casefold(ticker) != str.casefold("Done"):
             ticker_list.append(ticker.upper())
 
-print(ticker_list)
-
-
-
-
-
-
-requests_url = "https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=IBM&interval=5min&apikey=demo"
+requests_url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=" + ticker_list[0] +"&apikey={API_KEY}"
 response = requests.get(requests_url)
+ticker_info = json.loads(response.text)
+try:
+    ticker_time_series = ticker_info["Time Series (Daily)"]
+except:
+    print("Oops! Robo-Advisor was unable to retrieve data for this stock.\nDouble Check that the ticker is spelled correctly.")
+    print("Exiting program...")
+    exit()
 
+records = []
 
+for date1, daily_data in ticker_time_series.items(): # had to name date "date1" because it interfered with stating current time in final output.
+    record = {
+        "timestamp": date1,
+        "open": float(daily_data["1. open"]),
+        "high": float(daily_data["2. high"]),
+        "low": float(daily_data["3. low"]),
+        "close": float(daily_data["4. close"]),
+        "volume": int(daily_data["5. volume"]),
+    }
+    records.append(record)
 
-# print("-------------------------")
-# print("SELECTED SYMBOL: XYZ")
-# print("-------------------------")
-# print("REQUESTING STOCK MARKET DATA...")
-# print("REQUEST AT: 2018-02-20 02:00pm")
-# print("-------------------------")
-# print("LATEST DAY: 2018-02-20")
-# print("LATEST CLOSE: $100,000.00")
-# print("RECENT HIGH: $101,000.00")
-# print("RECENT LOW: $99,000.00")
-# print("-------------------------")
-# print("RECOMMENDATION: BUY!")
-# print("RECOMMENDATION REASON: TODO")
-# print("-------------------------")
-# print("HAPPY INVESTING!")
-# print("-------------------------")
+records_df = pd.DataFrame(records)
+records_df.to_csv("data/prices_" + ticker_list[0])
+
+recent_highs = []
+recent_lows = []
+
+for record in records:
+    recent_highs.append(record["high"])
+    recent_lows.append(record["low"])
+
+symbol = ticker_list[0]
+latest_data = records[0]["timestamp"]
+latest_close = records[0]["close"]
+recent_high = max(recent_highs)
+recent_low = min(recent_lows)
+recommendation = ""
+
+if recent_high < (2 * recent_low) and latest_close > (recent_low * 1.1):
+    recommendation = "BUY!"
+else:
+    recommendation = "DON'T BUY!"
+
+if recommendation == "BUY!":
+    explain = str(symbol + " stock is not too risky and has recorded steady gains over the past 100 days.")
+else:
+    explain = str(symbol + " stock is either too risky, or is not growing enough - or worse - both!")
+
+e = datetime.datetime.now() # helpful website to put time in attractive format: https://phoenixnap.com/kb/get-current-date-time-python
+
+print("-------------------------")
+print("SELECTED SYMBOL:", symbol)
+print("-------------------------")
+print("REQUESTING STOCK MARKET DATA...")
+print("REQUEST AT:", date.today(), e.strftime("%I:%M %p"))
+print("-------------------------")
+print("LATEST DATA FROM:", latest_data)
+print("LATEST CLOSE:", latest_close)
+print("RECENT HIGH:", to_usd(recent_high))
+print("RECENT LOW:", to_usd(recent_low))
+print("-------------------------")
+print("RECOMMENDATION:", recommendation)
+print("RECOMMENDATION REASON:", explain)
+print("-------------------------")
+print("HAPPY INVESTING!")
+print("-------------------------")
