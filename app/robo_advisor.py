@@ -41,7 +41,7 @@ while(str.casefold(ticker) != str.casefold("Done") and counter < 5):
             counter += 1
 
 for stock_ticker in ticker_list:
-    requests_url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=" + stock_ticker +"&apikey={API_KEY}"
+    requests_url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=" + stock_ticker +"&outputsize=full&apikey={API_KEY}"
     response = requests.get(requests_url)
     ticker_info = json.loads(response.text)
     try:
@@ -53,6 +53,8 @@ for stock_ticker in ticker_list:
 
     records = []
 
+    counter = 0
+
     for date1, daily_data in ticker_time_series.items(): # had to name date "date1" because it interfered with stating current time in final output.
         record = {
             "timestamp": date1,
@@ -63,6 +65,9 @@ for stock_ticker in ticker_list:
             "volume": int(daily_data["5. volume"]),
         }
         records.append(record)
+        counter += 1
+        if counter == 253: # 253 trading days in a year - "Records" holds data from the previous year
+            break
 
     records_df = pd.DataFrame(records)
     records_df.to_csv("data/prices_" + stock_ticker)
@@ -87,7 +92,7 @@ for stock_ticker in ticker_list:
         recommendation = "DON'T BUY!"
 
     if recommendation == "BUY!":
-        explain = str(symbol + " stock is not too risky and has recorded steady gains over the past 100 days.")
+        explain = str(symbol + " stock is not too risky and has recorded steady gains over the past year.")
     else:
         explain = str(symbol + " stock is either too risky, or is not growing enough - or worse - both!")
 
@@ -101,8 +106,8 @@ for stock_ticker in ticker_list:
     print("-------------------------")
     print("LATEST DATA FROM:", latest_data)
     print("LATEST CLOSE:", to_usd(latest_close))
-    print("RECENT HIGH:", to_usd(recent_high))
-    print("RECENT LOW:", to_usd(recent_low))
+    print("52-WEEK HIGH:", to_usd(recent_high))
+    print("52-WEEK LOW:", to_usd(recent_low))
     print("-------------------------")
     print("RECOMMENDATION:", recommendation)
     print("RECOMMENDATION REASON:", explain)
