@@ -1,0 +1,5 @@
+# requirements to install
+
+requests
+python-dotenv
+pandas 
